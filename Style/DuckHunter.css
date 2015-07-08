@@ -6,5 +6,5 @@ body{
     width: 1024px;
     height: 768px;
     margin: 0 auto;
-    cursor: none;
+    cursor: url('../Res/aim.png'), auto;
 }

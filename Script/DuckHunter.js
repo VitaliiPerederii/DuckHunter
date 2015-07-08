@@ -8,7 +8,6 @@ function Game() {
         y: 0
     };
 
-    this._aim = new Aim();
     this._keyStates = {};
 }
 
@@ -20,7 +19,6 @@ Game.prototype._render = function () {
     this._canvasCtx.fillStyle = "#000000";
     this._canvasCtx.fillRect(this._pos.x, this._pos.y, 40, 40);
 
-    this._aim.render(this._canvasCtx);
 }
 
 Game.prototype._onKeyDown = function() {
@@ -46,13 +44,19 @@ Game.prototype._onKeyUp = function() {
     }
 }
 
+Game.prototype._onBlur = function () {
+    for (var key = 37; key <= 40; key++) {
+        this._keyStates[key] = false;
+    }
+}
+
 Game.prototype._onMouseMove = function () {
-    this._aim.setPos(new Point(event.clientX - this._canvas.offsetLeft, event.clientY - this._canvas.offsetTop, -1));
+    
 }
 
 Game.prototype._onMouseOut = function () {
 
-    this._aim.setPos(new Point());
+  
 }
 
 Game.prototype._gameLoop = function () {
@@ -82,6 +86,10 @@ Game.prototype._initialize = function () {
 
     this._canvas.addEventListener("mousemove", function () {
         This._onMouseMove.apply(This, arguments);
+    });
+
+    document.body.addEventListener("onblur", function () {
+        This._onBlur.apply(This, arguments);
     });
 }
 

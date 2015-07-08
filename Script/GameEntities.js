@@ -18,24 +18,4 @@ function Point(x, y, z) {
 };
 
 Point.prototype = Object.create(Clonable.prototype);
-
-function Aim() {
-    this._pos = new Point(0, 0, 0);
-    this._image = new Image("..\Res\aim.png");
-};
-
-Aim.prototype.setPos = function (pos) {
-    this._pos = pos;
-};
-
-Aim.prototype.getPos = function () {
-    return this._pos.clone();
-};
-
-Aim.prototype.render = function (context) {
-    if (this._pos.x != -1 && this._pos.y != -1) {
-        context.drawImage(this._image, this._pos.x, this._pos.y, 32, 32);
-    }
-}
-
 //============================ end Game entitiesdeclarations ==============================
