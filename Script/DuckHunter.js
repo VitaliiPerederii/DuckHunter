@@ -3,22 +3,27 @@ function Game() {
     this._canvas = document.getElementById("myCanvas");
     this._canvasCtx = this._canvas.getContext("2d");
 
-    this._pos = {
-        x: 0,
-        y: 0
-    };
+    this._worldScrollPos = new Point(0, 0);
+    this._worldImage = new Image(4000, 1384);
+
+    this._duck = new Duck();
+    this._duck.setPos(new Point(0, 0));
+    this._duck.setSize(new Size(150, 171));
 
     this._keyStates = {};
 }
 
+Game.prototype.WORLD_SCROLL_STEP = 20;
+
 Game.prototype._render = function () {
 
-    this._canvasCtx.fillStyle = "#00FF00";
-    this._canvasCtx.fillRect(0, 0, this._canvas.clientWidth, this._canvas.clientHeight);
+    this._canvasCtx.drawImage(this._worldImage, this._worldScrollPos.x, this._worldScrollPos.y, this._canvas.clientWidth, this._canvas.clientHeight,
+                                                                        0, 0, this._canvas.clientWidth, this._canvas.clientHeight);
 
-    this._canvasCtx.fillStyle = "#000000";
-    this._canvasCtx.fillRect(this._pos.x, this._pos.y, 40, 40);
-
+    this._canvasCtx.save();
+    this._canvasCtx.translate(-this._worldScrollPos.x, -this._worldScrollPos.y);
+    this._duck.render(this._canvasCtx);
+    this._canvasCtx.restore();
 }
 
 Game.prototype._onKeyDown = function() {
@@ -61,12 +66,34 @@ Game.prototype._onMouseOut = function () {
 
 Game.prototype._gameLoop = function () {
 
-    this._pos.x -= this._keyStates[37] ? 5 : 0;
-    this._pos.y -= this._keyStates[38] ? 5 : 0;
-    this._pos.x += this._keyStates[39] ? 5 : 0;
-    this._pos.y += this._keyStates[40] ? 5 : 0;
+    this._updateEntitiesStates();
 
     this._render();
+}
+
+
+Game.prototype._updateEntitiesStates = function () {
+
+    if (this._keyStates[37]) {
+        this._worldScrollPos.x = Math.max(0, this._worldScrollPos.x - Game.prototype.WORLD_SCROLL_STEP);
+    }
+    
+
+    if (this._keyStates[38]) {
+        this._worldScrollPos.y = Math.max(0, this._worldScrollPos.y - Game.prototype.WORLD_SCROLL_STEP);
+    }
+    
+    if (this._keyStates[39]) {
+        this._worldScrollPos.x = Math.min(this._worldImage.width - this._canvas.clientWidth, this._worldScrollPos.x + Game.prototype.WORLD_SCROLL_STEP);
+    }
+
+
+    if (this._keyStates[40]) {
+        this._worldScrollPos.y = Math.min(this._worldImage.height - this._canvas.clientHeight, this._worldScrollPos.y + Game.prototype.WORLD_SCROLL_STEP);
+    }
+    
+    
+    this._duck.makeStep();
 }
 
 Game.prototype._initialize = function () {
@@ -91,15 +118,20 @@ Game.prototype._initialize = function () {
     document.body.addEventListener("onblur", function () {
         This._onBlur.apply(This, arguments);
     });
+
+    window.requestAnimationFrame = window.requestAnimationFrame || window.mozRequestAnimationFrame ||
+                                    window.webkitRequestAnimationFrame || window.msRequestAnimationFrame;
+
+    this._worldImage.src = "../DuckHunter/Res/background.jpg";
 }
 
 Game.prototype.run = function () {
     this._initialize();
     var This = this;
-    setTimeout(function loop() {
+    window.requestAnimationFrame(function loop() {
         This._gameLoop.apply(This);
-        setTimeout(loop, 25);
-    }, 25);
+        window.requestAnimationFrame(loop);
+    });
 }
 //============================ end Game declarations ==============================
 
