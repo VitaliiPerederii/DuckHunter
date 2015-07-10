@@ -5,12 +5,10 @@ function Game() {
 
     this._worldScrollPos = new Point(0, 0);
     this._worldImage = new Image(4000, 1384);
-
-    this._duck = new Duck();
-    this._duck.setPos(new Point(0, 0));
-    this._duck.setSize(new Size(150, 171));
-
+       
     this._keyStates = {};
+
+    this._ducks = [];
 }
 
 Game.prototype.WORLD_SCROLL_STEP = 20;
@@ -71,30 +69,56 @@ Game.prototype._gameLoop = function () {
     this._render();
 }
 
-
 Game.prototype._updateEntitiesStates = function () {
+
+    this._updateKeysStates();
+    this._performDucksActions();
+}
+
+Game.prototype._updateKeysStates = function () {
 
     if (this._keyStates[37]) {
         this._worldScrollPos.x = Math.max(0, this._worldScrollPos.x - Game.prototype.WORLD_SCROLL_STEP);
     }
-    
 
     if (this._keyStates[38]) {
         this._worldScrollPos.y = Math.max(0, this._worldScrollPos.y - Game.prototype.WORLD_SCROLL_STEP);
     }
-    
+
     if (this._keyStates[39]) {
         this._worldScrollPos.x = Math.min(this._worldImage.width - this._canvas.clientWidth, this._worldScrollPos.x + Game.prototype.WORLD_SCROLL_STEP);
     }
 
-
     if (this._keyStates[40]) {
         this._worldScrollPos.y = Math.min(this._worldImage.height - this._canvas.clientHeight, this._worldScrollPos.y + Game.prototype.WORLD_SCROLL_STEP);
     }
-    
-    
-    this._duck.makeStep();
 }
+
+
+Game.prototype._performDucksActions = function () {
+
+    var duck = new Duck();
+    var width = this._worldImage.width;
+    var height = this._worldImage.height;
+
+    var zPos = getRandomArbitary(0, 3);
+    duck.setPos(new Point(getRandomArbitary(0, width), getRandomArbitary(0, height), zPos));
+        
+    duck.setDirection(getRandomArbitary(0, Duck.prototype.DIR_LAST));
+
+    for (var index = 0; index < this._ducks.length; index++) {
+        if (z >= this._ducks[index].getPos().z) {
+            this._ducks.unshift(duck);
+            break;
+        }
+    }
+}
+
+function getRandomArbitary(min, max) {
+    return Math.floor(Math.random() * (max - min) + min);
+}
+
+
 
 Game.prototype._initialize = function () {
 
