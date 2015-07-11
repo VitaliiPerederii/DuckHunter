@@ -9,9 +9,13 @@ function Game() {
     this._keyStates = {};
 
     this._ducks = [];
+
+    this._finishTime = null;
+    this._score = 0;
 }
 
 Game.prototype.WORLD_SCROLL_STEP = 20;
+Game.prototype.GAME_DURATION = 120;
 
 Game.prototype._render = function () {
 
@@ -20,8 +24,43 @@ Game.prototype._render = function () {
 
     this._canvasCtx.save();
     this._canvasCtx.translate(-this._worldScrollPos.x, -this._worldScrollPos.y);
-    this._duck.render(this._canvasCtx);
+    this._ducks.forEach(function (self, duck) {
+        duck.render(this._canvasCtx);
+    }.bind(this, arguments));
+
     this._canvasCtx.restore();
+
+    this._renderIndicators();
+}
+
+Game.prototype._renderIndicators = function () {
+    var ms = this._finishTime - Date.now();
+
+    this._canvasCtx.fillStyle = "rgb(255, 255, 255)";
+    if (ms > 0) {
+        this._canvasCtx.font = "48px serif";
+        var timeString = "";
+        var date = new Date(ms);
+        var seconds = date.getSeconds();
+        timeString += '' + date.getMinutes();
+        timeString += ':' + (seconds < 10 ? '0' + seconds : seconds);
+        
+        this._canvasCtx.fillText(timeString, 930, 750);
+        this._canvasCtx.strokeText(timeString, 930, 750);
+        
+        var scoreString = 'Score: ' + this._score;
+        this._canvasCtx.fillText(scoreString, 10, 40);
+        this._canvasCtx.strokeText(scoreString, 10, 40);
+    } else {
+
+        this._canvasCtx.font = "72px serif";
+        var scoreString = 'Your score: ' + this._score;
+        var tm = this._canvasCtx.measureText(scoreString);
+        this._canvasCtx.fillText(scoreString, this._canvas.clientWidth / 2 - tm.width / 2, this._canvas.clientHeight / 2 - 36);
+        this._canvasCtx.strokeText(scoreString, this._canvas.clientWidth / 2 - tm.width / 2, this._canvas.clientHeight / 2 - 36);
+    }
+
+    
 }
 
 Game.prototype._onKeyDown = function() {
@@ -47,20 +86,12 @@ Game.prototype._onKeyUp = function() {
     }
 }
 
-Game.prototype._onBlur = function () {
-    for (var key = 37; key <= 40; key++) {
-        this._keyStates[key] = false;
-    }
+Game.prototype._onMouseDown = function () {
+
+    var rect = this._canvas.getBoundingClientRect();
+    this._shoot(event.clientX + this._worldScrollPos.x - rect.left, event.clientY + this._worldScrollPos.y - rect.top);
 }
 
-Game.prototype._onMouseMove = function () {
-    
-}
-
-Game.prototype._onMouseOut = function () {
-
-  
-}
 
 Game.prototype._gameLoop = function () {
 
@@ -94,31 +125,82 @@ Game.prototype._updateKeysStates = function () {
     }
 }
 
-
 Game.prototype._performDucksActions = function () {
 
-    var duck = new Duck();
     var width = this._worldImage.width;
     var height = this._worldImage.height;
+    var margin = 10;
 
-    var zPos = getRandomArbitary(0, 3);
-    duck.setPos(new Point(getRandomArbitary(0, width), getRandomArbitary(0, height), zPos));
-        
-    duck.setDirection(getRandomArbitary(0, Duck.prototype.DIR_LAST));
+    for (var index = this._ducks.length - 1; index >= 0 ; index --) {
+        var duck = this._ducks[index];
+        var duckPos = duck.getPos();
+        var duckSize = duck.getSize();
 
-    for (var index = 0; index < this._ducks.length; index++) {
-        if (z >= this._ducks[index].getPos().z) {
-            this._ducks.unshift(duck);
+        if ((duckPos.x < -(duckSize.cx + margin)) ||
+            (duckPos.x > width + margin) || 
+            (duckPos.y < -(duckSize.cy + margin)) || 
+            (duckPos.y > height + margin)) {
+            this._ducks.splice(index, 1);
+            continue;
+        }
+    }
+
+    this._ducks.forEach(function (duck) {
+        duck.makeStep();
+    });
+}
+
+Game.prototype._shoot = function (x, y) {
+    for (var index = this._ducks.length - 1; index >= 0; index --) {
+        var duck = this._ducks[index];
+        var duckPos = duck.getPos();
+        var duckSize = duck.getSize();
+
+        if (!duck.isDead() && (duckPos.x < x) &&
+            (duckPos.x + duckSize.cx > x) &&
+            (duckPos.y < y) &&
+            (duckPos.y + +duckSize.cy > y)) {
+            duck.kill();
+            switch (duckPos.z) {
+                case 0:
+                case 1:
+                    this._score += 5;
+                    break;
+                case 2:
+                    this._score += 10;
+                    break;
+                case 3:
+                    this._score += 25;
+                    break;
+            }
             break;
         }
     }
 }
 
-function getRandomArbitary(min, max) {
-    return Math.floor(Math.random() * (max - min) + min);
+Game.prototype._generateDuck = function () {
+    var duck = new Duck();
+    var width = this._worldImage.width;
+    var height = this._worldImage.height;
+
+    var zPos = getRandomArbitary(1, 4);
+    duck.setPos(new Point(getRandomArbitary(0, width), getRandomArbitary(0, height), zPos));
+
+    duck.setDirection(getRandomArbitary(0, Duck.prototype.DIR_LAST + 1));
+
+    if (!this._ducks.length) {
+        this._ducks.push(duck);
+    } else {
+        for (var index = 0; index < this._ducks.length; index++) {
+            if (zPos >= this._ducks[index].getPos().z) {
+                this._ducks.unshift(duck);
+                break;
+            } else if (index == this._ducks.length - 1) {
+                this._ducks.push(duck);
+            }
+        }
+    }
 }
-
-
 
 Game.prototype._initialize = function () {
 
@@ -131,17 +213,10 @@ Game.prototype._initialize = function () {
         This._onKeyUp.apply(This, arguments);
     });
 
-    this._canvas.addEventListener("mouseout", function () {
-        This._onMouseOut.apply(This, arguments);
+    this._canvas.addEventListener("mousedown", function () {
+        This._onMouseDown.apply(This, arguments);
     });
 
-    this._canvas.addEventListener("mousemove", function () {
-        This._onMouseMove.apply(This, arguments);
-    });
-
-    document.body.addEventListener("onblur", function () {
-        This._onBlur.apply(This, arguments);
-    });
 
     window.requestAnimationFrame = window.requestAnimationFrame || window.mozRequestAnimationFrame ||
                                     window.webkitRequestAnimationFrame || window.msRequestAnimationFrame;
@@ -152,10 +227,21 @@ Game.prototype._initialize = function () {
 Game.prototype.run = function () {
     this._initialize();
     var This = this;
+    this._finishTime = Date.now() + (1000 * Game.prototype.GAME_DURATION);
+
     window.requestAnimationFrame(function loop() {
         This._gameLoop.apply(This);
-        window.requestAnimationFrame(loop);
+        if (This._finishTime > Date.now()) {
+            window.requestAnimationFrame(loop);
+        } else {
+            This._render.apply(This);
+        }
     });
+
+    setTimeout(function loop() {
+        This._generateDuck.apply(This);
+        window.setTimeout(loop, getRandomArbitary(0, 2000));
+    }, getRandomArbitary(0, 2000));
 }
 //============================ end Game declarations ==============================
 
