@@ -150,6 +150,48 @@ Duck.prototype.render = function (context) {
 }
 
 
+//-----------------------------ScoreIndicator-------------------------
+
+function ScoreIndicator(indicateValue, context) {
+    Entity.prototype.constructor.call(this);
+
+    this._indicateValue = '+' + indicateValue;
+
+    context.font = this._getFont();
+    var tm = context.measureText(this._indicateValue);
+    this._size.cx = tm.width;
+    this._size.cy = this._getFontSize();
+
+    this._stepCounter = 0;
+}
+
+ScoreIndicator.prototype = Object.create(Entity.prototype);
+ScoreIndicator.prototype.constructor = ScoreIndicator;
+
+ScoreIndicator.prototype.render = function (context) {
+
+    context.font = this._getFont();
+    context.fillStyle = "rgb(255, 255, 255)";
+    context.fillText(this._indicateValue, this._pos.x, this._pos.y);
+    context.strokeText(this._indicateValue, this._pos.x, this._pos.y);
+}
+
+ScoreIndicator.prototype._getFont = function () {
+    var fontSize = this._getFontSize();
+
+    return fontSize + 'px serif';
+}
+
+ScoreIndicator.prototype._getFontSize = function () {
+    return 36;
+}
+
+ScoreIndicator.prototype.makeStep = function () {
+    this._pos.y -= Math.pow(1.2, this._stepCounter);
+
+    this._stepCounter++;
+}
+
 //============================ end Game entities declarations ==============================
 
 function getRandomArbitary(min, max) {

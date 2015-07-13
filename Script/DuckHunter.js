@@ -5,27 +5,33 @@ function Game() {
 
     this._worldScrollPos = new Point(0, 0);
     this._worldImage = new Image(4000, 1384);
+    this._bulitImage = new Image(10, 60);
        
     this._keyStates = {};
 
     this._ducks = [];
+    this._scoreIndicators = [];
 
     this._finishTime = null;
     this._score = 0;
+    this._bulitCount = Game.prototype.MAX_BULIT_COUNT;
 }
 
 Game.prototype.WORLD_SCROLL_STEP = 20;
 Game.prototype.GAME_DURATION = 120;
+Game.prototype.MAX_BULIT_COUNT = 10;
 
 Game.prototype._render = function () {
 
     this._canvasCtx.drawImage(this._worldImage, this._worldScrollPos.x, this._worldScrollPos.y, this._canvas.clientWidth, this._canvas.clientHeight,
                                                                         0, 0, this._canvas.clientWidth, this._canvas.clientHeight);
-
     this._canvasCtx.save();
     this._canvasCtx.translate(-this._worldScrollPos.x, -this._worldScrollPos.y);
-    this._ducks.forEach(function (self, duck) {
-        duck.render(this._canvasCtx);
+
+    var drawArr = this._getScoreDucksArr();
+
+    drawArr.forEach(function (self, entity) {
+        entity.render(this._canvasCtx);
     }.bind(this, arguments));
 
     this._canvasCtx.restore();
@@ -51,6 +57,15 @@ Game.prototype._renderIndicators = function () {
         var scoreString = 'Score: ' + this._score;
         this._canvasCtx.fillText(scoreString, 10, 40);
         this._canvasCtx.strokeText(scoreString, 10, 40);
+
+        var leftPos = 10;
+
+        for (var index = 0; index < this._bulitCount; index++) {
+            this._canvasCtx.drawImage(this._bulitImage, 0, 0, this._bulitImage.width, this._bulitImage.height, leftPos, this._canvas.clientHeight - this._bulitImage.height - 5, this._bulitImage.width, this._bulitImage.height);
+            leftPos += this._bulitImage.width + 10;
+        }
+
+
     } else {
 
         this._canvasCtx.font = "72px serif";
@@ -59,8 +74,6 @@ Game.prototype._renderIndicators = function () {
         this._canvasCtx.fillText(scoreString, this._canvas.clientWidth / 2 - tm.width / 2, this._canvas.clientHeight / 2 - 36);
         this._canvasCtx.strokeText(scoreString, this._canvas.clientWidth / 2 - tm.width / 2, this._canvas.clientHeight / 2 - 36);
     }
-
-    
 }
 
 Game.prototype._onKeyDown = function() {
@@ -86,12 +99,20 @@ Game.prototype._onKeyUp = function() {
     }
 }
 
-Game.prototype._onMouseDown = function () {
+Game.prototype._onMouseDown = function (event) {
 
-    var rect = this._canvas.getBoundingClientRect();
-    this._shoot(event.clientX + this._worldScrollPos.x - rect.left, event.clientY + this._worldScrollPos.y - rect.top);
+    if (event.button === 0) {
+        var rect = this._canvas.getBoundingClientRect();
+        this._shoot(event.clientX + this._worldScrollPos.x - rect.left, event.clientY + this._worldScrollPos.y - rect.top);
+    }
 }
 
+Game.prototype._onContextMenu = function (event) {
+
+    this._refresh();
+
+    event.preventDefault();
+}
 
 Game.prototype._gameLoop = function () {
 
@@ -131,26 +152,33 @@ Game.prototype._performDucksActions = function () {
     var height = this._worldImage.height;
     var margin = 10;
 
-    for (var index = this._ducks.length - 1; index >= 0 ; index --) {
-        var duck = this._ducks[index];
-        var duckPos = duck.getPos();
-        var duckSize = duck.getSize();
+    var actionArr = this._getScoreDucksArr();
 
-        if ((duckPos.x < -(duckSize.cx + margin)) ||
-            (duckPos.x > width + margin) || 
-            (duckPos.y < -(duckSize.cy + margin)) || 
-            (duckPos.y > height + margin)) {
-            this._ducks.splice(index, 1);
+    for (var index = actionArr.length - 1; index >= 0 ; index--) {
+        var entity = actionArr[index];
+        var entityPos = entity.getPos();
+        var entitySize = entity.getSize();
+
+        if ((entityPos.x < -(entitySize.cx + margin)) ||
+            (entityPos.x > width + margin) ||
+            (entityPos.y < -(entitySize.cy + margin)) ||
+            (entityPos.y > height + margin)) {
+            actionArr.splice(index, 1);
             continue;
         }
     }
 
-    this._ducks.forEach(function (duck) {
-        duck.makeStep();
+    actionArr.forEach(function (entity) {
+        entity.makeStep();
     });
 }
 
 Game.prototype._shoot = function (x, y) {
+
+    if (this._bulitCount == 0)
+        return;
+
+    this._bulitCount--;
     for (var index = this._ducks.length - 1; index >= 0; index --) {
         var duck = this._ducks[index];
         var duckPos = duck.getPos();
@@ -161,21 +189,35 @@ Game.prototype._shoot = function (x, y) {
             (duckPos.y < y) &&
             (duckPos.y + +duckSize.cy > y)) {
             duck.kill();
+
+            var scoreVal = 0;
+            
             switch (duckPos.z) {
                 case 0:
                 case 1:
-                    this._score += 5;
+                    scoreVal = 5;
                     break;
                 case 2:
-                    this._score += 10;
+                    scoreVal = 10;
                     break;
                 case 3:
-                    this._score += 25;
+                    scoreVal = 25;
                     break;
             }
+            this._score += scoreVal;
+
+            var scoreContent = new ScoreIndicator(scoreVal, this._canvasCtx);
+            scoreContent.setPos(new Point(duckPos.x, duckPos.y, duckPos.z));
+            this._scoreIndicators.push(scoreContent);
+            
             break;
         }
     }
+}
+
+Game.prototype._refresh = function () {
+
+    this._bulitCount = Game.prototype.MAX_BULIT_COUNT;
 }
 
 Game.prototype._generateDuck = function () {
@@ -202,6 +244,11 @@ Game.prototype._generateDuck = function () {
     }
 }
 
+Game.prototype._getScoreDucksArr = function () {
+    var scoreDucksArr = this._ducks.concat(this._scoreIndicators);
+    return scoreDucksArr;
+}
+
 Game.prototype._initialize = function () {
 
     var This = this;
@@ -218,10 +265,15 @@ Game.prototype._initialize = function () {
     });
 
 
+    this._canvas.addEventListener("contextmenu", function () {
+        This._onContextMenu.apply(This, arguments);
+    });
+
     window.requestAnimationFrame = window.requestAnimationFrame || window.mozRequestAnimationFrame ||
                                     window.webkitRequestAnimationFrame || window.msRequestAnimationFrame;
 
     this._worldImage.src = "../DuckHunter/Res/background.jpg";
+    this._bulitImage.src = "../DuckHunter/Res/bulit.png";
 }
 
 Game.prototype.run = function () {
